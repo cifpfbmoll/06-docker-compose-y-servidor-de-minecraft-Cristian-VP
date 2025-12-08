@@ -1,109 +1,53 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/bOcmkqh5)
-# **Despliegue de un Servidor de Minecraft (Java Edition) con Docker**
+# Despliegue de un servidor de Minecraft 
 
-## **1. Introducción**
+Esta práctica es un proyecto didáctico que muestra cómo ejecutar y administrar un servidor de Minecraft (Java Edition) usando Docker. El repositorio incluye el fichero `docker-compose.yml` con la configuración mínima necesaria y una carpeta `screenshots/` con capturas que documentan el arranque del servidor, la consola administrativa (RCON) y aspectos de gestión como usuarios y whitelist. Está pensado para aprender los pasos básicos de despliegue y diagnóstico visual a partir de ejemplos reales.
 
-Este es el procedimiento para desplegar, configurar y administrar un servidor de Minecraft utilizando **Docker Compose**. La configuración incluye persistencia de datos, limitación de recursos de hardware (RAM) y gestión de privilegios de administrador. Esta práctica se basa en la imagen oficial mantenida por la comunidad ([itzg/minecraft-server](https://hub.docker.com/r/itzg/minecraft-server)).
+### Objetivo
 
-## **2. Requisitos Previos**
+El objetivo del ejercicio es ilustrar, con ejemplos visuales, el despliegue y la administración básica de un servidor de Minecraft ejecutado en un contenedor Docker. Las capturas muestran la fase de arranque del servidor, la consola administrativa (RCON), la comprobación de usuarios y el estado de la whitelist.
 
-* **Docker Engine** instalado y en ejecución.
-* **Docker Compose** (incluido en las versiones modernas de Docker Desktop/Engine).
-* Conexión a internet para la descarga de la imagen base.
 
-## **3. Configuración del Servicio**
+A continuación se muestran las capturas incluidas en el repositorio. Cada imagen tiene una breve descripción de lo que representa y qué debes comprobar cuando realices el despliegue:
 
-El núcleo de la configuración reside en el archivo docker-compose.yml. A continuación se presenta la configuración unificada que incluye la aceptación del EULA (Acuerdo de Licencia de Usuario Final) y la limitación de memoria RAM para optimizar el rendimiento del host.
+1) `screenshots/docker_mc-serve.png`
 
-### **3.1. Creación del Fichero**
+Descripción: captura de los mensajes del servidor durante el arranque y la generación del mundo.
 
-Cree un directorio para el proyecto y dentro genere un archivo llamado docker-compose.yml con el siguiente contenido:
+![Logs durante el arranque del servidor](screenshots/docker_mc-serve.png)
 
-```yaml
-services:
-  minecraft-server:
-    image: itzg/minecraft-server
-    container_name: mc-server
-    ports:
-      - "25565:25565"
-    environment:
-      # Aceptación obligatoria del Acuerdo de Licencia de Usuario Final
-      - EULA=TRUE
-      # Límite de memoria asignada a la JVM (Java Virtual Machine)
-      - MEMORY=2G
-    volumes:
-      # Persistencia de datos (mundos, configuraciones, inventarios)
-      - mc-data:/data
-    restart: unless-stopped
+Qué ver y por qué importa:
+- Busca líneas que indiquen la creación de los directorios de mundo y la carga de recursos. Estas líneas confirman que el servidor está construyendo el entorno correctamente.
+- El mensaje final que habitualmente indica que el servidor está listo suele contener la palabra "Done" y confirma que el servidor aceptó la configuración y arrancó sin errores críticos.
+- Si observas errores relacionados con Java o permisos en esta pantalla, significa que hay un problema en la imagen o en las rutas montadas y conviene revisarlas.
 
-volumes:
-  mc-data:
-```
+2) `screenshots/rcon_cli.png`
 
-### **3.2. Desglose de Parámetros Técnicos**
+Descripción: ejemplo de la consola `rcon-cli` ejecutada dentro del contenedor (consola administrativa del servidor).
 
-| Parámetro | Descripción |
-| :---- | :---- |
-| **image** | Utiliza itzg/minecraft-server, que automatiza la instalación de Java y los binarios del servidor. |
-| **ports** | Mapea el puerto 25565 del contenedor al host, permitiendo conexiones externas. |
-| **EULA=TRUE** | Variable de entorno crítica. Sin ella, el servidor abortará el inicio inmediatamente. |
-| **MEMORY=2G** | Gestiona el *Heap Size* de Java. Evita que el proceso consuma toda la RAM del sistema anfitrión, previniendo errores de "Out of Memory". |
-| **volumes** | El volumen mc-data garantiza que, si el contenedor es eliminado, los datos del mundo persistan en el sistema. |
+![Consola RCON dentro del contenedor](screenshots/rcon_cli.png)
 
----
+Qué ver y por qué importa:
+- Muestra cómo enviar comandos al servidor (por ejemplo, cambiar el modo de juego, teletransportar jugadores o hacerlos OP).
+- Observa los mensajes de confirmación que devuelve el servidor al ejecutar comandos; son la forma más directa de comprobar que una orden se ha aplicado correctamente.
+- Si la consola responde con errores de autenticación o con respuestas vacías, revisa la configuración de RCON (`RCON_PASSWORD`, `RCON_PORT`) y que el servicio interno esté escuchando.
 
-## **4. Ejecución y Despliegue**
+3) `screenshots/check_user_list.png`
 
-Para iniciar el servicio, abra una terminal en el directorio del archivo y ejecute el siguiente comando. El parámetro `-d` permite la ejecución en segundo plano (modo *detached*).
+Descripción: muestra la verificación de la lista de usuarios conectados u otra información de estado del servidor.
 
-```bash
-docker compose up -d
-```
+![Comprobación de usuarios conectados](screenshots/check_user_list.png)
 
-### **Verificación del Estado**
+Qué ver y por qué importa:
+- Permite comprobar quién está conectado y confirmar que la IP/puerto del servidor están accesibles para los jugadores.
+- Es útil para monitorizar sesiones activas y detectar problemas de conexión desde el lado del servidor.
+- Si la lista está vacía y esperabas jugadores, revisa los logs de conexión en `docker_mc-serve.png` y la configuración de red del host.
 
-Puede supervisar el proceso de inicialización y generación del mundo mediante la lectura de logs:
+4) `screenshots/empty_whitelist.png`
 
-```bash
-docker logs -f mc-server
-```
+Descripción: ejemplo visual de una whitelist vacía o del estado de permisos/whitelist del servidor.
 
-*El servidor estará operativo cuando aparezca el mensaje: Done (X.Xs)! For help, type "help".*
+![Estado de la whitelist (vacía)](screenshots/empty_whitelist.png)
 
----
-
-## **5. Gestión de Permisos (Operador/Admin)**
-
-Dado que el servidor se ejecuta en un entorno aislado, la consola estándar no es accesible directamente. Para otorgar permisos de administrador (OP) a un usuario, utilizaremos la herramienta rcon-cli inyectada a través de docker exec. Con dicha modifiación podríamos cambiar el modo de juego a creativo, teletransportarte, cambiar la hora del día o expulsar jugadores.
-
-Ejecute el siguiente comando en su terminal, sustituyendo `<NOMBRE_USUARIO>` por el nickname exacto del jugador:
-
-```bash
-docker exec mc-server rcon-cli op <NOMBRE_USUARIO>
-```
-
-**Resultado esperado:** El servidor confirmará la acción con el mensaje Made `<NOMBRE_USUARIO>` a server operator.
-
----
-
-## **6. Ciclo de Vida y Mantenimiento**
-
-A continuación se listan los comandos esenciales para la administración del ciclo de vida del contenedor:
-
-* **Detener el servidor (Graceful shutdown):**
-
-  ```bash
-  docker compose down
-  ```
-
-* **Reiniciar el servidor (Aplicar cambios de configuración):**
-
-  ```bash
-  docker compose up -d
-  ```
-
-* **Acceso interactivo a la consola del servidor (RCON):**
-
-  ```bash
-  docker exec -it mc-server rcon-cli
-  ```
+Qué ver y por qué importa:
+- Indica si el servidor está configurado para permitir solo jugadores listados (whitelist habilitada) o no.
+- Una whitelist vacía con la whitelist activada bloqueará el acceso de jugadores no incluidos; asegúrate de añadir los usuarios necesarios si ese es el comportamiento deseado.
